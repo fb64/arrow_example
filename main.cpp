@@ -2,9 +2,13 @@
 
 #include <arrow/io/api.h>
 #include <arrow/ipc/api.h>
-
 #include "vectorsExamples.h"
+#include <parquet/arrow/writer.h>
+#include <arrow/util/type_fwd.h>
+#include <arrow/table.h>
 
+using parquet::ArrowWriterProperties;
+using parquet::WriterProperties;
 
 namespace dataframe_example {
 
@@ -80,8 +84,28 @@ arrow::Status writeExamplesBase() {
     ARROW_RETURN_NOT_OK(ipcStreamWriter->WriteRecordBatch(*recordBatch2));
     ARROW_RETURN_NOT_OK(ipcStreamWriter->Close());
 
+    //Writing Parquet file
+    std::shared_ptr<WriterProperties> parquetProps =
+    WriterProperties::Builder().compression(arrow::Compression::SNAPPY)->build();
+
+    std::shared_ptr<ArrowWriterProperties> arrow_props =
+    ArrowWriterProperties::Builder().store_schema()->build();
+    std::shared_ptr<arrow::io::FileOutputStream> outfile;
+    ARROW_ASSIGN_OR_RAISE(outfile, arrow::io::FileOutputStream::Open("test.arrow.parquet"));
+    std::unique_ptr<parquet::arrow::FileWriter> parquetWriter;
+
+    ARROW_ASSIGN_OR_RAISE(
+    parquetWriter, parquet::arrow::FileWriter::Open(*recordBatch1->schema().get(),
+                                             arrow::default_memory_pool(), outfile,
+                                                    parquetProps, arrow_props));
+
+    ARROW_RETURN_NOT_OK(parquetWriter->WriteRecordBatch(*recordBatch1));
+    ARROW_RETURN_NOT_OK(parquetWriter->WriteRecordBatch(*recordBatch2));
+    ARROW_RETURN_NOT_OK(parquetWriter->Close());
+
     return arrow::Status::OK();
 }
+
 
 /**
  * Create Feather and IPC files with two batches containing not nullable columns

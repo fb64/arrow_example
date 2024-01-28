@@ -7,7 +7,7 @@ git submodule update --init --recursive
 mkdir -p build_arrow
 pushd build_arrow
 
-cmake ../arrow/cpp && make -j$(nproc) && sudo make install; sudo ldconfig
+cmake -DARROW_PARQUET=ON -DARROW_WITH_SNAPPY=ON ../arrow/cpp && make -j$(nproc) && sudo make install; sudo ldconfig
 popd
 
 mkdir -p build
